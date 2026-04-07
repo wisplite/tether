@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gorilla/websocket"
 	"github.com/wisplite/tether/reactivity"
 	"gorm.io/gorm"
 )
@@ -21,12 +22,12 @@ func NewEngine(db *gorm.DB) *Engine {
 }
 
 func (e *Engine) RegisterMutation(name string, mutation func(ctx *MutationCtx) error) {
-	e.mutations[name] = mutation
+	e.mutations[name] = mutation // stores the mutation in the list of valid mutations
 	slog.Debug("Registered mutation", "name", name)
 }
 
 func (e *Engine) RegisterQuery(name string, query func(ctx *QueryCtx) error) {
-	e.queries[name] = query
+	e.queries[name] = query // stores the query in the list of valid queries
 	slog.Debug("Registered query", "name", name)
 }
 
@@ -36,10 +37,23 @@ func (e *Engine) CreateTable(name string, schema interface{}) {
 }
 
 func (e *Engine) Handle(w http.ResponseWriter, r *http.Request) {
-	reactivity.Handle(w, r, e)
+	reactivity.Handle(w, r, e) // wraps the raw websocket connection with the engine handler
+}
+
+func (e *Engine) OnConnect(conn *websocket.Conn) error {
+	slog.Debug("Connected to websocket")
+	// TODO: implement the logic to handle the connection
+	return nil
+}
+
+func (e *Engine) OnDisconnect(conn *websocket.Conn) error {
+	slog.Debug("Disconnected from websocket")
+	// TODO: implement the logic to handle the disconnection
+	return nil
 }
 
 func (e *Engine) OnReceiveMessage(msg map[string]interface{}) error {
 	slog.Debug("Received message", "message", msg)
+	// TODO: implement the logic to handle the message
 	return nil
 }
