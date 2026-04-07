@@ -36,5 +36,10 @@ func (e *Engine) CreateTable(name string, schema interface{}) {
 }
 
 func (e *Engine) Handle(w http.ResponseWriter, r *http.Request) {
-	reactivity.Handle(w, r)
+	reactivity.Handle(w, r, e)
+}
+
+func (e *Engine) OnReceiveMessage(msg map[string]interface{}) error {
+	slog.Debug("Received message", "message", msg)
+	return nil
 }
