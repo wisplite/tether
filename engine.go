@@ -2,6 +2,7 @@ package tether
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/wisplite/tether/reactivity"
 	"gorm.io/gorm"
@@ -27,4 +28,13 @@ func (e *Engine) RegisterMutation(name string, mutation func(ctx *MutationCtx) e
 func (e *Engine) RegisterQuery(name string, query func(ctx *QueryCtx) error) {
 	e.queries[name] = query
 	slog.Debug("Registered query", "name", name)
+}
+
+func (e *Engine) CreateTable(name string, schema interface{}) {
+	e.db.AutoMigrate(schema)
+	slog.Debug("Created table", "name", name)
+}
+
+func (e *Engine) Handle(w http.ResponseWriter, r *http.Request) {
+	reactivity.Handle(w, r)
 }
