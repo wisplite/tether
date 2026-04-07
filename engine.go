@@ -11,14 +11,13 @@ import (
 
 type Engine struct {
 	db        *gorm.DB
-	channels  map[string]*reactivity.Channel
 	mutations map[string]func(ctx *MutationCtx) error
 	queries   map[string]func(ctx *QueryCtx) error
 }
 
 func NewEngine(db *gorm.DB) *Engine {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
-	return &Engine{db: db, channels: make(map[string]*reactivity.Channel), mutations: make(map[string]func(ctx *MutationCtx) error), queries: make(map[string]func(ctx *QueryCtx) error)}
+	return &Engine{db: db, mutations: make(map[string]func(ctx *MutationCtx) error), queries: make(map[string]func(ctx *QueryCtx) error)}
 }
 
 func (e *Engine) RegisterMutation(name string, mutation func(ctx *MutationCtx) error) {
