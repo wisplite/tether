@@ -9,6 +9,12 @@ function test() {
             type: "subscribe",
             channel: "messages",
         }));
+		setTimeout(() => {
+			ws.send(JSON.stringify({
+				type: "unsubscribe",
+				channel: "messages",
+			}));
+		}, 5000);
 	};
 	ws.onclose = () => {
 		console.log("Disconnected from server");

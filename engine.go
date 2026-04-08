@@ -41,19 +41,19 @@ func (e *Engine) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Engine) OnConnect(clientID string) error {
-	slog.Debug("Connected to websocket")
+	slog.Debug("Connected to websocket", "client", clientID)
 	// TODO: implement the logic to handle the connection
 	return nil
 }
 
 func (e *Engine) OnDisconnect(clientID string) error {
-	slog.Debug("Disconnected from websocket")
+	slog.Debug("Disconnected from websocket", "client", clientID)
 	// TODO: implement the logic to handle the disconnection
 	return nil
 }
 
 func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) error {
-	slog.Debug("Received message", "message", msg)
+	slog.Debug("Received message", "from", clientID, "message", msg)
 	// TODO: implement the logic to handle the message
 	return nil
 }
