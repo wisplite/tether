@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/gorilla/websocket"
 	"github.com/wisplite/tether/reactivity"
 	"gorm.io/gorm"
 )
@@ -13,11 +12,13 @@ type Engine struct {
 	db        *gorm.DB
 	mutations map[string]func(ctx *MutationCtx) error
 	queries   map[string]func(ctx *QueryCtx) error
+	tracker   *reactivity.Tracker
 }
 
 func NewEngine(db *gorm.DB) *Engine {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
-	return &Engine{db: db, mutations: make(map[string]func(ctx *MutationCtx) error), queries: make(map[string]func(ctx *QueryCtx) error)}
+	tracker := reactivity.NewTracker()
+	return &Engine{db: db, mutations: make(map[string]func(ctx *MutationCtx) error), queries: make(map[string]func(ctx *QueryCtx) error), tracker: tracker}
 }
 
 func (e *Engine) RegisterMutation(name string, mutation func(ctx *MutationCtx) error) {
@@ -36,22 +37,22 @@ func (e *Engine) CreateTable(name string, schema interface{}) {
 }
 
 func (e *Engine) Handle(w http.ResponseWriter, r *http.Request) {
-	reactivity.Handle(w, r, e) // wraps the raw websocket connection with the engine handler
+	reactivity.Handle(w, r, e, e.tracker) // wraps the raw websocket connection with the engine handler
 }
 
-func (e *Engine) OnConnect(conn *websocket.Conn) error {
+func (e *Engine) OnConnect(clientID string) error {
 	slog.Debug("Connected to websocket")
 	// TODO: implement the logic to handle the connection
 	return nil
 }
 
-func (e *Engine) OnDisconnect(conn *websocket.Conn) error {
+func (e *Engine) OnDisconnect(clientID string) error {
 	slog.Debug("Disconnected from websocket")
 	// TODO: implement the logic to handle the disconnection
 	return nil
 }
 
-func (e *Engine) OnReceiveMessage(msg map[string]interface{}) error {
+func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) error {
 	slog.Debug("Received message", "message", msg)
 	// TODO: implement the logic to handle the message
 	return nil

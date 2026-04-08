@@ -10,14 +10,14 @@ import (
 
 // MessageReceiver receives decoded WebSocket payloads. Implemented by tether.Engine.
 type EngineHandler interface {
-	OnConnect(conn *websocket.Conn) error
-	OnDisconnect(conn *websocket.Conn) error
-	OnReceiveMessage(msg map[string]interface{}) error
+	OnConnect(clientID string) error
+	OnDisconnect(clientID string) error
+	OnReceiveMessage(clientID string, msg map[string]interface{}) error
 }
 
 var upgrader = websocket.Upgrader{}
 
-func Handle(w http.ResponseWriter, r *http.Request, e EngineHandler) {
+func Handle(w http.ResponseWriter, r *http.Request, e EngineHandler, tracker *Tracker) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("WS: Failed to upgrade to websocket", "error", err)
@@ -25,13 +25,14 @@ func Handle(w http.ResponseWriter, r *http.Request, e EngineHandler) {
 	}
 	defer ws.Close()
 
-	err = e.OnConnect(ws)
+	client := NewClient(ws)
+	err = e.OnConnect(client.ID)
 	if err != nil {
 		slog.Error("WS: Failed to call onConnect handler", "error", err)
 		return
 	}
-	defer e.OnDisconnect(ws)
-
+	defer e.OnDisconnect(client.ID)
+	tracker.Track(client)
 	for {
 		_, message, err := ws.ReadMessage()
 		if err != nil {
@@ -47,7 +48,7 @@ func Handle(w http.ResponseWriter, r *http.Request, e EngineHandler) {
 			return
 		}
 		slog.Debug("WS: Unmarshalled message", "message", msg)
-		err = e.OnReceiveMessage(msg)
+		err = e.OnReceiveMessage(client.ID, msg)
 		if err != nil {
 			slog.Error("WS: Failed to on receive message", "error", err)
 			return
