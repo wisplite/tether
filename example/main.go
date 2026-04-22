@@ -30,7 +30,7 @@ func main() {
 		panic("failed to connect database")
 	}
 
-	engine := tether.NewEngine(db)
+	engine := tether.NewEngine(db, "sqlite")
 
 	engine.CreateTable("users", &User{})
 	engine.CreateTable("messages", &Messages{})
@@ -41,7 +41,7 @@ func main() {
 
 	engine.RegisterQuery("getUser", func(ctx *tether.QueryCtx) error {
 		return nil
-	})
+	}, []string{"users"})
 
 	engine.RegisterMutation("createMessage", func(ctx *tether.MutationCtx) error {
 		ctx.DB.Create(&Messages{ID: uuid.NewString(), Message: ctx.Params["message"].(string), SenderID: ctx.AuthCtx.UserID, RoomID: ctx.Params["room"].(string)})

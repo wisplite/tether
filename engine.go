@@ -10,15 +10,19 @@ import (
 
 type Engine struct {
 	db        *gorm.DB
+	dbType    string // sqlite or postgres
 	mutations map[string]func(ctx *MutationCtx) error
 	queries   map[string]func(ctx *QueryCtx) error
 	tracker   *reactivity.Tracker
 }
 
-func NewEngine(db *gorm.DB) *Engine {
+func NewEngine(db *gorm.DB, dbType string) *Engine {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	tracker := reactivity.NewTracker()
-	return &Engine{db: db, mutations: make(map[string]func(ctx *MutationCtx) error), queries: make(map[string]func(ctx *QueryCtx) error), tracker: tracker}
+	if dbType != "sqlite" && dbType != "postgres" {
+		panic("Invalid database type")
+	}
+	return &Engine{db: db, dbType: dbType, mutations: make(map[string]func(ctx *MutationCtx) error), queries: make(map[string]func(ctx *QueryCtx) error), tracker: tracker}
 }
 
 func (e *Engine) RegisterMutation(name string, mutation func(ctx *MutationCtx) error) {
@@ -26,7 +30,7 @@ func (e *Engine) RegisterMutation(name string, mutation func(ctx *MutationCtx) e
 	slog.Debug("Registered mutation", "name", name)
 }
 
-func (e *Engine) RegisterQuery(name string, query func(ctx *QueryCtx) error) {
+func (e *Engine) RegisterQuery(name string, query func(ctx *QueryCtx) error, dependencies []string) {
 	e.queries[name] = query // stores the query in the list of valid queries
 	slog.Debug("Registered query", "name", name)
 }
