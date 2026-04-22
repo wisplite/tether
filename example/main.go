@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/glebarez/sqlite"
+	"github.com/google/uuid"
 	"github.com/wisplite/tether"
 	"gorm.io/gorm"
 )
@@ -16,11 +17,11 @@ type User struct {
 }
 
 type Messages struct {
-	ID         string `gorm:"primaryKey"`
-	Message    string
-	SenderID   string
-	ReceiverID string
-	CreatedAt  time.Time
+	ID        string `gorm:"primaryKey"`
+	Message   string
+	SenderID  string
+	RoomID    string
+	CreatedAt time.Time
 }
 
 func main() {
@@ -39,6 +40,11 @@ func main() {
 	})
 
 	engine.RegisterQuery("getUser", func(ctx *tether.QueryCtx) error {
+		return nil
+	})
+
+	engine.RegisterMutation("createMessage", func(ctx *tether.MutationCtx) error {
+		ctx.DB.Create(&Messages{ID: uuid.NewString(), Message: ctx.Params["message"].(string), SenderID: ctx.AuthCtx.UserID, RoomID: ctx.Params["room"].(string)})
 		return nil
 	})
 

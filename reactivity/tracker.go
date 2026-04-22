@@ -32,25 +32,25 @@ func (t *Tracker) Untrack(c *Client) {
 	delete(t.clients, c.ID)
 }
 
-func (t *Tracker) SubscribeToQuery(clientID string, queryHash string) {
+func (t *Tracker) SubscribeToQuery(clientID string, query string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.subscriptions[queryHash] == nil {
-		t.subscriptions[queryHash] = make(map[string]bool)
+	if t.subscriptions[query] == nil {
+		t.subscriptions[query] = make(map[string]bool)
 	}
-	t.subscriptions[queryHash][clientID] = true
+	t.subscriptions[query][clientID] = true
 }
 
-func (t *Tracker) UnsubscribeFromQuery(clientID string, queryHash string) {
+func (t *Tracker) UnsubscribeFromQuery(clientID string, query string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	delete(t.subscriptions[queryHash], clientID)
+	delete(t.subscriptions[query], clientID)
 }
 
-func (t *Tracker) GetQuerySubscriptions(queryHash string) []string {
+func (t *Tracker) GetQuerySubscriptions(query string) []string {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	subscriptions := t.subscriptions[queryHash]
+	subscriptions := t.subscriptions[query]
 	subscriptionIDs := make([]string, 0, len(subscriptions))
 	for clientID := range subscriptions {
 		subscriptionIDs = append(subscriptionIDs, clientID)

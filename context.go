@@ -10,9 +10,11 @@ type AuthCtx struct {
 type QueryCtx struct {
 	DB      *gorm.DB
 	AuthCtx *AuthCtx
+	Params  map[string]interface{}
 }
 
 type MutationCtx struct {
 	DB      *gorm.DB
 	AuthCtx *AuthCtx
+	Params  map[string]interface{}
 }

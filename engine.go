@@ -1,7 +1,6 @@
 package tether
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -53,17 +52,32 @@ func (e *Engine) OnDisconnect(clientID string) error {
 	return nil
 }
 
+func (e *Engine) ExecuteQuery(query string) (interface{}, error) {
+	/*
+		TODO: implement the logic to execute the query
+		Steps needed:
+		1. Check which tables updated
+		2. Get the queries that rely on the tables
+		3. Get the subscriptions that need updating
+		4. Calculate hash for every query
+		5. Send the updated queries if hash changed
+	*/
+	return nil, nil
+}
+
+func (e *Engine) ExecuteMutation(mutation string, params map[string]interface{}) (interface{}, error) {
+	result := e.mutations[mutation](&MutationCtx{DB: e.db, AuthCtx: &AuthCtx{UserID: "", IsLoggedIn: true}, Params: params})
+	return result, nil
+}
+
 func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) error {
 	slog.Debug("Received message", "from", clientID, "message", msg)
-	message, err := json.Marshal(map[string]interface{}{
-		"type":     "query",
-		"location": msg["query"],
-		"data":     "test",
-	})
-	if err != nil {
-		slog.Error("Failed to marshal message", "error", err)
-		return err
+	switch msg["type"] {
+	case "query":
+		query := msg["location"].(string) + "?" + msg["params"].(string)
+		e.tracker.SubscribeToQuery(clientID, query)
+	case "mutation":
+		e.ExecuteMutation(msg["location"].(string), msg["params"].(map[string]interface{}))
 	}
-	e.tracker.SendMessage(clientID, message)
 	return nil
 }
