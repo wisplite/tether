@@ -23,7 +23,6 @@ func Handle(w http.ResponseWriter, r *http.Request, e EngineHandler, tracker *Tr
 		slog.Error("WS: Failed to upgrade to websocket", "error", err)
 		return
 	}
-	defer ws.Close()
 
 	client := NewClient(ws)
 	err = e.OnConnect(client.ID)
@@ -33,6 +32,11 @@ func Handle(w http.ResponseWriter, r *http.Request, e EngineHandler, tracker *Tr
 	}
 	defer e.OnDisconnect(client.ID)
 	tracker.Track(client)
+	defer func() {
+		tracker.Untrack(client)
+		close(client.Send)
+	}()
+	go client.WritePump()
 	for {
 		_, message, err := ws.ReadMessage()
 		if err != nil {

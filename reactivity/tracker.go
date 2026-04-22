@@ -1,6 +1,7 @@
 package reactivity
 
 import (
+	"log/slog"
 	"sync"
 )
 
@@ -55,4 +56,19 @@ func (t *Tracker) GetQuerySubscriptions(queryHash string) []string {
 		subscriptionIDs = append(subscriptionIDs, clientID)
 	}
 	return subscriptionIDs
+}
+
+func (t *Tracker) SendMessage(clientID string, message []byte) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	client := t.clients[clientID]
+	if client == nil {
+		slog.Error("Tracker: Client not found", "clientID", clientID)
+		return
+	}
+	select {
+	case client.Send <- message:
+	default:
+		slog.Error("Tracker: Client send channel is full", "clientID", clientID)
+	}
 }

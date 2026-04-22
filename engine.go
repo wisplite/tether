@@ -1,6 +1,7 @@
 package tether
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -54,6 +55,15 @@ func (e *Engine) OnDisconnect(clientID string) error {
 
 func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) error {
 	slog.Debug("Received message", "from", clientID, "message", msg)
-	// TODO: implement the logic to handle the message
+	message, err := json.Marshal(map[string]interface{}{
+		"type":     "query",
+		"location": msg["query"],
+		"data":     "test",
+	})
+	if err != nil {
+		slog.Error("Failed to marshal message", "error", err)
+		return err
+	}
+	e.tracker.SendMessage(clientID, message)
 	return nil
 }
