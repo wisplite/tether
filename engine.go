@@ -82,7 +82,7 @@ func (e *Engine) InvalidateTable(tableName string) {
 			slog.Debug("Invalidating subscription", "subscription", subscription["clientID"])
 			params := map[string]interface{}{}
 			json.Unmarshal([]byte(subscription["params"]), &params)
-			_, err := e.ExecuteQuery(query, params)
+			_, err := e.ExecuteQuery(query, params, subscription["clientID"])
 			if err != nil {
 				slog.Error("Failed to execute query", "error", err)
 				continue
@@ -91,7 +91,7 @@ func (e *Engine) InvalidateTable(tableName string) {
 	}
 }
 
-func (e *Engine) ExecuteQuery(query string, params map[string]interface{}) (interface{}, error) {
+func (e *Engine) ExecuteQuery(query string, params map[string]interface{}, clientID string) (interface{}, error) {
 	/*
 		TODO: implement the logic to execute the query
 		Steps needed:
@@ -101,10 +101,12 @@ func (e *Engine) ExecuteQuery(query string, params map[string]interface{}) (inte
 		4. Calculate hash for every query
 		5. Send the updated queries if hash changed
 	*/
+	slog.Debug("Executing query", "query", query, "params", params)
+	e.queries[query](&QueryCtx{DB: e.db, AuthCtx: &AuthCtx{UserID: "", IsLoggedIn: true}, Params: params})
 	return nil, nil
 }
 
-func (e *Engine) ExecuteMutation(mutation string, params map[string]interface{}) (interface{}, error) {
+func (e *Engine) ExecuteMutation(mutation string, params map[string]interface{}, clientID string) (interface{}, error) {
 	result := e.mutations[mutation](&MutationCtx{DB: e.db, AuthCtx: &AuthCtx{UserID: "", IsLoggedIn: true}, Params: params})
 	return result, nil
 }
@@ -115,7 +117,7 @@ func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) e
 	case "query":
 		e.tracker.SubscribeToQuery(clientID, msg["location"].(string), msg["params"].(map[string]string))
 	case "mutation":
-		e.ExecuteMutation(msg["location"].(string), msg["params"].(map[string]interface{}))
+		e.ExecuteMutation(msg["location"].(string), msg["params"].(map[string]interface{}), clientID)
 	}
 	return nil
 }
