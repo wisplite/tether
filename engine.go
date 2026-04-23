@@ -91,7 +91,7 @@ func (e *Engine) InvalidateTable(tableName string) {
 				slog.Error("Failed to unmarshal params", "error", err)
 				continue
 			}
-			_, err = e.ExecuteQuery(query, params, subscription["clientID"])
+			_, err = e.ExecuteQuery(query, params, subscription["clientID"], false)
 			if err != nil {
 				slog.Error("Failed to execute query", "error", err)
 				continue
@@ -100,7 +100,7 @@ func (e *Engine) InvalidateTable(tableName string) {
 	}
 }
 
-func (e *Engine) ExecuteQuery(query string, params map[string]interface{}, clientID string) (interface{}, error) {
+func (e *Engine) ExecuteQuery(query string, params map[string]interface{}, clientID string, forceSend bool) (interface{}, error) {
 	/*
 		TODO: implement the logic to execute the query
 		Steps needed:
@@ -125,7 +125,7 @@ func (e *Engine) ExecuteQuery(query string, params map[string]interface{}, clien
 		return nil, err
 	}
 	queryHash := xxhash.Sum64(responseJSON)
-	if lastHash == queryHash {
+	if lastHash == queryHash && !forceSend { // we want to force send on first subscription, regardless of if the query hasn't changed
 		return result, nil
 	}
 
@@ -151,6 +151,7 @@ func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) e
 			return err
 		}
 		e.tracker.SubscribeToQuery(clientID, msg["location"].(string), string(paramsJSON))
+		e.ExecuteQuery(msg["location"].(string), msg["params"].(map[string]interface{}), clientID, true)
 	case "mutation":
 		e.ExecuteMutation(msg["location"].(string), msg["params"].(map[string]interface{}), clientID)
 	}
