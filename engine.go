@@ -176,8 +176,15 @@ func (e *Engine) ExecuteQuery(query string, params map[string]interface{}, clien
 	return result, nil
 }
 
-func (e *Engine) ExecuteMutation(mutation string, params map[string]interface{}, clientID string) (interface{}, error) {
+func (e *Engine) ExecuteMutation(mutation string, params map[string]interface{}, clientID string, mutationID string) (interface{}, error) {
 	result := e.mutations[mutation](&MutationCtx{DB: e.db, AuthCtx: &AuthCtx{UserID: "", IsLoggedIn: true}, Params: params})
+	slog.Debug("Executing mutation", "mutation", mutation, "params", params, "result", result)
+	responseJSON, err := json.Marshal(map[string]interface{}{"type": "mutation", "location": mutation, "data": result, "mutation_id": mutationID})
+	if err != nil {
+		slog.Error("Failed to encode mutation result", "mutation", mutation, "error", err)
+		return nil, err
+	}
+	e.tracker.SendMessage(clientID, responseJSON)
 	return result, nil
 }
 
@@ -192,7 +199,7 @@ func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) e
 		e.tracker.SubscribeToQuery(clientID, msg["location"].(string), string(paramsJSON))
 		e.ExecuteQuery(msg["location"].(string), msg["params"].(map[string]interface{}), clientID, true)
 	case "mutation":
-		e.ExecuteMutation(msg["location"].(string), msg["params"].(map[string]interface{}), clientID)
+		e.ExecuteMutation(msg["location"].(string), msg["params"].(map[string]interface{}), clientID, msg["mutation_id"].(string))
 	}
 	return nil
 }

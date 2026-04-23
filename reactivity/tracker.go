@@ -2,6 +2,7 @@ package reactivity
 
 import (
 	"log/slog"
+	"slices"
 	"sync"
 )
 
@@ -13,11 +14,16 @@ type Tracker struct {
 	clients map[string]*Client
 
 	// Maps a Query Hash (e.g. "getUser?id=1") to a Set of Client IDs
-	subscriptions map[string][]map[string]string
+	subscriptions       map[string][]map[string]string
+	clientSubscriptions map[string][]string
 }
 
 func NewTracker() *Tracker {
-	return &Tracker{clients: make(map[string]*Client), subscriptions: make(map[string][]map[string]string)}
+	return &Tracker{
+		clients:             make(map[string]*Client),
+		subscriptions:       make(map[string][]map[string]string),
+		clientSubscriptions: make(map[string][]string),
+	}
 }
 
 func (t *Tracker) Track(c *Client) {
@@ -30,6 +36,20 @@ func (t *Tracker) Untrack(c *Client) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	delete(t.clients, c.ID)
+	delete(t.clientSubscriptions, c.ID)
+	for query, subs := range t.subscriptions {
+		kept := subs[:0]
+		for _, sub := range subs {
+			if sub["clientID"] != c.ID {
+				kept = append(kept, sub)
+			}
+		}
+		if len(kept) == 0 {
+			delete(t.subscriptions, query)
+		} else {
+			t.subscriptions[query] = kept
+		}
+	}
 }
 
 func (t *Tracker) SetAuthID(clientID string, authID string) {
@@ -39,6 +59,10 @@ func (t *Tracker) SetAuthID(clientID string, authID string) {
 }
 
 func (t *Tracker) GetAuthID(clientID string) string {
+	if _, ok := t.clients[clientID]; !ok {
+		slog.Error("Tracker: Client not found", "clientID", clientID)
+		return ""
+	}
 	return t.clients[clientID].GetAuthID()
 }
 
@@ -48,6 +72,13 @@ func (t *Tracker) SubscribeToQuery(clientID string, query string, params string)
 	if t.subscriptions[query] == nil {
 		t.subscriptions[query] = make([]map[string]string, 0)
 	}
+	if t.clientSubscriptions[clientID] == nil {
+		t.clientSubscriptions[clientID] = make([]string, 0)
+	}
+	if slices.Contains(t.clientSubscriptions[clientID], query) {
+		return // avoid duplicate subscriptions
+	}
+	t.clientSubscriptions[clientID] = append(t.clientSubscriptions[clientID], query)
 	// set t.subscriptions[query] to a map of client IDs and their params
 	t.subscriptions[query] = append(t.subscriptions[query], map[string]string{"clientID": clientID, "params": params})
 	slog.Debug("Tracker: Subscribed to query", "query", query, "clientID", clientID, "params", params)

@@ -42,8 +42,11 @@ func main() {
 	}, []string{"messages"})
 
 	engine.RegisterMutation("createMessage", func(ctx *tether.MutationCtx) interface{} {
-		ctx.DB.Create(&Messages{ID: uuid.NewString(), Message: ctx.Params["message"].(string), SenderID: ctx.AuthCtx.UserID, RoomID: ctx.Params["room"].(string)})
-		return nil
+		msg := &Messages{ID: uuid.NewString(), Message: ctx.Params["message"].(string), SenderID: ctx.AuthCtx.UserID, RoomID: ctx.Params["room"].(string)}
+		if err := ctx.DB.Create(msg).Error; err != nil {
+			return map[string]interface{}{"error": err.Error()}
+		}
+		return msg
 	})
 
 	http.HandleFunc("/tether", engine.Handle)
