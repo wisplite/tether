@@ -150,12 +150,15 @@ func (e *Engine) ExecuteQuery(query string, params map[string]interface{}, clien
 	if err != nil {
 		return nil, err
 	}
-	cacheKey := query + "?" + string(paramsJSON) + "?" + clientID
+	authID := e.tracker.GetAuthID(clientID)
+	cacheKey := query + "?" + string(paramsJSON) + "?" + authID
 	e.hashMu.Lock()
 	lastHash := e.queryHashes[cacheKey]
 	e.hashMu.Unlock()
 	slog.Debug("Executing query", "query", query, "params", params)
-	result := e.queries[query](&QueryCtx{DB: e.db, AuthCtx: &AuthCtx{UserID: "", IsLoggedIn: true}, Params: params})
+	authCtx := &AuthCtx{UserID: authID, IsLoggedIn: authID != ""}
+	queryCtx := &QueryCtx{DB: e.db, AuthCtx: authCtx, Params: params}
+	result := e.queries[query](queryCtx)
 	responseJSON, err := json.Marshal(map[string]interface{}{"type": "query", "location": query, "data": result})
 	if err != nil {
 		return nil, err
