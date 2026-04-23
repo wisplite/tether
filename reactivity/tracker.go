@@ -32,6 +32,16 @@ func (t *Tracker) Untrack(c *Client) {
 	delete(t.clients, c.ID)
 }
 
+func (t *Tracker) SetAuthID(clientID string, authID string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.clients[clientID].SetAuthID(authID)
+}
+
+func (t *Tracker) GetAuthID(clientID string) string {
+	return t.clients[clientID].GetAuthID()
+}
+
 func (t *Tracker) SubscribeToQuery(clientID string, query string, params string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()

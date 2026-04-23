@@ -8,13 +8,22 @@ import (
 )
 
 type Client struct {
-	ID   string
-	Conn *websocket.Conn
-	Send chan []byte
+	ID     string
+	Conn   *websocket.Conn
+	Send   chan []byte
+	AuthID string
 }
 
 func NewClient(conn *websocket.Conn) *Client {
-	return &Client{ID: uuid.NewString(), Conn: conn, Send: make(chan []byte, 256)}
+	return &Client{ID: uuid.NewString(), Conn: conn, Send: make(chan []byte, 256), AuthID: ""}
+}
+
+func (c *Client) SetAuthID(authID string) {
+	c.AuthID = authID
+}
+
+func (c *Client) GetAuthID() string {
+	return c.AuthID
 }
 
 func (c *Client) WritePump() {
