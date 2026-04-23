@@ -1,6 +1,7 @@
 package reactivity
 
 import (
+	"encoding/json"
 	"log/slog"
 	"sync"
 )
@@ -13,11 +14,11 @@ type Tracker struct {
 	clients map[string]*Client
 
 	// Maps a Query Hash (e.g. "getUser?id=1") to a Set of Client IDs
-	subscriptions map[string]map[string]bool
+	subscriptions map[string][]map[string]string
 }
 
 func NewTracker() *Tracker {
-	return &Tracker{clients: make(map[string]*Client), subscriptions: make(map[string]map[string]bool)}
+	return &Tracker{clients: make(map[string]*Client), subscriptions: make(map[string][]map[string]string)}
 }
 
 func (t *Tracker) Track(c *Client) {
@@ -32,30 +33,37 @@ func (t *Tracker) Untrack(c *Client) {
 	delete(t.clients, c.ID)
 }
 
-func (t *Tracker) SubscribeToQuery(clientID string, query string) {
+func (t *Tracker) SubscribeToQuery(clientID string, query string, params map[string]string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.subscriptions[query] == nil {
-		t.subscriptions[query] = make(map[string]bool)
+		t.subscriptions[query] = make([]map[string]string, 0)
 	}
-	t.subscriptions[query][clientID] = true
+	// set t.subscriptions[query] to a map of client IDs and their params
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		slog.Error("Tracker: Failed to marshal params", "error", err)
+		return
+	}
+	t.subscriptions[query] = append(t.subscriptions[query], map[string]string{"clientID": clientID, "params": string(paramsJSON)})
 }
 
 func (t *Tracker) UnsubscribeFromQuery(clientID string, query string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	delete(t.subscriptions[query], clientID)
+	for i, subscription := range t.subscriptions[query] {
+		if subscription["clientID"] == clientID {
+			t.subscriptions[query] = append(t.subscriptions[query][:i], t.subscriptions[query][i+1:]...)
+			break
+		}
+	}
 }
 
-func (t *Tracker) GetQuerySubscriptions(query string) []string {
+func (t *Tracker) GetQuerySubscriptions(query string) []map[string]string {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	subscriptions := t.subscriptions[query]
-	subscriptionIDs := make([]string, 0, len(subscriptions))
-	for clientID := range subscriptions {
-		subscriptionIDs = append(subscriptionIDs, clientID)
-	}
-	return subscriptionIDs
+	return subscriptions
 }
 
 func (t *Tracker) SendMessage(clientID string, message []byte) {
