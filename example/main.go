@@ -35,15 +35,13 @@ func main() {
 	engine.CreateTable("users", &User{})
 	engine.CreateTable("messages", &Messages{})
 
-	engine.RegisterMutation("createUser", func(ctx *tether.MutationCtx) error {
-		return nil
-	})
+	engine.RegisterQuery("getMessages", func(ctx *tether.QueryCtx) interface{} {
+		var messages []Messages
+		ctx.DB.Where("room_id = ?", ctx.Params["room"].(string)).Find(&messages)
+		return messages
+	}, []string{"messages"})
 
-	engine.RegisterQuery("getUser", func(ctx *tether.QueryCtx) error {
-		return nil
-	}, []string{"users"})
-
-	engine.RegisterMutation("createMessage", func(ctx *tether.MutationCtx) error {
+	engine.RegisterMutation("createMessage", func(ctx *tether.MutationCtx) interface{} {
 		ctx.DB.Create(&Messages{ID: uuid.NewString(), Message: ctx.Params["message"].(string), SenderID: ctx.AuthCtx.UserID, RoomID: ctx.Params["room"].(string)})
 		return nil
 	})

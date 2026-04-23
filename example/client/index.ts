@@ -4,8 +4,8 @@ import { createInterface } from "node:readline/promises";
 const client = new TetherClient();
 client.connect("ws://localhost:8080/tether");
 
-client.subscribe("messages", { room: "1" }, (message) => {
-	console.log("Received message", message);
+client.subscribe("getMessages", { room: "1" }, (messages) => {
+	console.log("Received messages", messages);
 });
 
 const rl = createInterface({

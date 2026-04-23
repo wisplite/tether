@@ -1,7 +1,6 @@
 package reactivity
 
 import (
-	"encoding/json"
 	"log/slog"
 	"sync"
 )
@@ -33,19 +32,15 @@ func (t *Tracker) Untrack(c *Client) {
 	delete(t.clients, c.ID)
 }
 
-func (t *Tracker) SubscribeToQuery(clientID string, query string, params map[string]string) {
+func (t *Tracker) SubscribeToQuery(clientID string, query string, params string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.subscriptions[query] == nil {
 		t.subscriptions[query] = make([]map[string]string, 0)
 	}
 	// set t.subscriptions[query] to a map of client IDs and their params
-	paramsJSON, err := json.Marshal(params)
-	if err != nil {
-		slog.Error("Tracker: Failed to marshal params", "error", err)
-		return
-	}
-	t.subscriptions[query] = append(t.subscriptions[query], map[string]string{"clientID": clientID, "params": string(paramsJSON)})
+	t.subscriptions[query] = append(t.subscriptions[query], map[string]string{"clientID": clientID, "params": params})
+	slog.Debug("Tracker: Subscribed to query", "query", query, "clientID", clientID, "params", params)
 }
 
 func (t *Tracker) UnsubscribeFromQuery(clientID string, query string) {
