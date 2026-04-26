@@ -213,9 +213,11 @@ func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) e
 		userID, err := e.auth.GetUserID(msg["token"].(string))
 		if err != nil {
 			slog.Error("Failed to get user ID", "error", err)
+			e.tracker.SendMessage(clientID, []byte(`{"type": "auth", "error": "Failed to get user ID"}`))
 			return err
 		}
 		e.tracker.SetAuthID(clientID, userID)
+		e.tracker.SendMessage(clientID, []byte(`{"type": "auth", "success": true, "userID": "`+userID+`"}`))
 	}
 	return nil
 }
