@@ -20,7 +20,12 @@ type Engine struct {
 	hashMu       sync.RWMutex
 	queryHashes  map[string]uint64
 	tracker      *reactivity.Tracker
+	auth         Auth
 }
+
+type defaultAuth struct{}
+
+func (defaultAuth) GetUserID(_ string) (string, error) { return "", nil }
 
 func NewEngine(db *gorm.DB, dbType string) *Engine {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
@@ -28,7 +33,7 @@ func NewEngine(db *gorm.DB, dbType string) *Engine {
 	if dbType != "sqlite" && dbType != "postgres" {
 		panic("Invalid database type")
 	}
-	e := &Engine{db: db, dbType: dbType, mutations: make(map[string]func(ctx *MutationCtx) interface{}), queries: make(map[string]func(ctx *QueryCtx) interface{}), dependencies: make(map[string][]string), queryHashes: make(map[string]uint64), tracker: tracker}
+	e := &Engine{db: db, dbType: dbType, mutations: make(map[string]func(ctx *MutationCtx) interface{}), queries: make(map[string]func(ctx *QueryCtx) interface{}), dependencies: make(map[string][]string), queryHashes: make(map[string]uint64), tracker: tracker, auth: defaultAuth{}}
 	db.Callback().Create().After("gorm:create").Register("tether:after_create", func(tx *gorm.DB) {
 		if dbType == "postgres" {
 			return
@@ -36,6 +41,10 @@ func NewEngine(db *gorm.DB, dbType string) *Engine {
 		e.InvalidateTable(tx.Statement.Table)
 	})
 	return e
+}
+
+func (e *Engine) SetAuth(auth Auth) {
+	e.auth = auth
 }
 
 func (e *Engine) RegisterMutation(name string, mutation func(ctx *MutationCtx) interface{}) {
@@ -200,6 +209,13 @@ func (e *Engine) OnReceiveMessage(clientID string, msg map[string]interface{}) e
 		e.ExecuteQuery(msg["location"].(string), msg["params"].(map[string]interface{}), clientID, true)
 	case "mutation":
 		e.ExecuteMutation(msg["location"].(string), msg["params"].(map[string]interface{}), clientID, msg["mutation_id"].(string))
+	case "auth":
+		userID, err := e.auth.GetUserID(msg["token"].(string))
+		if err != nil {
+			slog.Error("Failed to get user ID", "error", err)
+			return err
+		}
+		e.tracker.SetAuthID(clientID, userID)
 	}
 	return nil
 }

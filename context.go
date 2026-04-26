@@ -18,3 +18,7 @@ type MutationCtx struct {
 	AuthCtx *AuthCtx
 	Params  map[string]interface{}
 }
+
+type Auth interface {
+	GetUserID(token string) (string, error)
+}
